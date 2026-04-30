@@ -53,3 +53,7 @@ dkms.conf
 
 # debug information files
 *.dwo
+
+# Carpetas (ignorar todo su contenido)
+.claude/
+__pycache__/
