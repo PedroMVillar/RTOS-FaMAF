@@ -57,3 +57,4 @@ dkms.conf
 # Carpetas (ignorar todo su contenido)
 .claude/
 __pycache__/
+TrabajoIntegrador/
