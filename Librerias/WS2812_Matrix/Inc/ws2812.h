@@ -19,18 +19,21 @@
  *   la tarea que llamó a WS2812_Refresh(). El CPU no realiza busy-wait
  *   durante la transmisión.
  *
- * Configuración del timer en STM32CubeMX (ej. TIM3, PA6):
+ * Configuración del timer en STM32CubeMX (TIM2, PA1):
  *   - Prescaler  : 0  (72 MHz sin división)
  *   - ARR        : 89 (período = 90/72MHz ≈ 1.25 µs)
- *   - Channel 1  : PWM Generation CH1, Mode 1, High Polarity
- *   - DMA        : TIM3_CH1 → DMA1_Channel6, Mem→Periph,
+ *   - Channel 2  : PWM Generation CH2, Mode 1, High Polarity
+ *   - DMA        : TIM2_CH2 → DMA1_Channel7, Mem→Periph,
  *                  HalfWord/HalfWord, Normal, Increment Memory
- *   - NVIC DMA   : DMA1 channel6 interrupt habilitado, prioridad 5
+ *   - NVIC DMA   : DMA1 channel7 interrupt habilitado, prioridad 5
+ *
+ * Nota: PA1 = TIM2_CH2. TIM2 es incompatible con el driver HC-SR04
+ *   (que también usa TIM2 para Input Capture). No usar ambos juntos.
  *
  * Uso básico:
  * @code
  *   WS2812_Handle_t hmatrix;
- *   WS2812_Init(&hmatrix, &htim3, TIM_CHANNEL_1);
+ *   WS2812_Init(&hmatrix, &htim2, TIM_CHANNEL_2);
  *
  *   // En HAL_TIM_PWM_PulseFinishedCallback:
  *   WS2812_DMA_Callback(&hmatrix, htim);

@@ -54,7 +54,7 @@ WS2812_Matrix/
 |----------------|---------------------|
 | 5V             | Fuente externa 5V (NO usar el 5V del Nucleo para la matriz) |
 | GND            | GND común con el Nucleo |
-| DIN            | 300Ω → PA6 (TIM3_CH1, CN10-13) |
+| DIN            | 300Ω → PA1 (TIM2_CH2, CN7-30) |
 
 > Conectar el GND de la fuente externa al GND del Nucleo para tener
 > referencia común.
@@ -68,29 +68,29 @@ WS2812_Matrix/
 En **Clock Configuration**: SYSCLK = **72 MHz** (HSE → PLL).
 Los timers en APB1 (TIM2–TIM4) reciben 72 MHz (APB1 × 2).
 
-### 2. Timer TIM3 — PWM + DMA
+### 2. Timer TIM2 — PWM + DMA
 
-En **Timers → TIM3**:
+En **Timers → TIM2**:
 
 | Parámetro | Valor |
 |---|---|
 | Prescaler | `0` (timer a 72 MHz) |
 | Counter Period (ARR) | `89` |
 | Counter Mode | Up |
-| Channel 1 | PWM Generation CH1 |
-| CH1 Mode | PWM mode 1 |
-| CH1 Pulse (CCR1) | `0` |
-| CH1 Output Compare Polarity | High |
-| CH1 Fast Mode | Disable |
+| Channel 2 | PWM Generation CH2 |
+| CH2 Mode | PWM mode 1 |
+| CH2 Pulse (CCR2) | `0` |
+| CH2 Output Compare Polarity | High |
+| CH2 Fast Mode | Disable |
 
-El pin PA6 queda asignado automáticamente como TIM3_CH1.
+El pin PA1 queda asignado automáticamente como TIM2_CH2.
 
-**DMA Settings (dentro de TIM3):**
+**DMA Settings (dentro de TIM2):**
 
 | Campo | Valor |
 |---|---|
-| DMA Request | TIM3_CH1 |
-| Channel | DMA1 Channel 6 (asignado automáticamente) |
+| DMA Request | TIM2_CH2 |
+| Channel | DMA1 Channel 7 (asignado automáticamente) |
 | Direction | Memory To Peripheral |
 | Priority | High |
 | Mode | Normal |
@@ -98,11 +98,11 @@ El pin PA6 queda asignado automáticamente como TIM3_CH1.
 | Data Width (Memory) | Half Word |
 | Increment Address | Memory (solo memoria incrementa) |
 
-**NVIC Settings (dentro de TIM3):**
-- ☑ TIM3 global interrupt — prioridad **`5`**
+**NVIC Settings (dentro de TIM2):**
+- ☑ TIM2 global interrupt — prioridad **`5`**
 
 **NVIC (global, en System Core → NVIC):**
-- ☑ DMA1 channel6 global interrupt — prioridad **`5`**
+- ☑ DMA1 channel7 global interrupt — prioridad **`5`**
 
 > Prioridad 5 es el mínimo para llamar a la API `FromISR` de FreeRTOS
 > (configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY = 5 por defecto en CubeMX).
@@ -115,11 +115,13 @@ El pin PA6 queda asignado automáticamente como TIM3_CH1.
 
 ### 4. ¿Conflicto con HC-SR04?
 
-Ninguno. El HC-SR04 usa TIM2 (DMA1 Canal 6 también no... espera).
+**Sí hay conflicto.** Esta configuración usa TIM2_CH2 (PA1). El driver
+HC-SR04 también ocupa TIM2 para Input Capture, por lo que **no se pueden
+usar ambos en el mismo proyecto**.
 
-> **Atención**: TIM3_CH1 usa DMA1_Channel6. Si también usás el driver
-> HC-SR04 con TIM2, el TIM2 no usa DMA, solo usa interrupciones de IC.
-> No hay conflicto de canales DMA.
+Para combinar WS2812 + HC-SR04, reasignar el WS2812 a:
+- **TIM3_CH1** → PA6, DMA1_Channel6 (opción recomendada), o
+- **TIM4_CH1** → PB6, DMA1_Channel1
 
 ---
 
@@ -146,7 +148,7 @@ WS2812_Handle_t hmatrix;   /* GLOBAL, no en stack de tarea */
 
 ```c
 /* USER CODE BEGIN 2 */
-WS2812_Init(&hmatrix, &htim3, TIM_CHANNEL_1);
+WS2812_Init(&hmatrix, &htim2, TIM_CHANNEL_2);
 
 xTaskCreate(vMatrixTask, "Matrix", 512, NULL, 2, NULL);
 
@@ -171,7 +173,7 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 
 ```c
 // Inicialización
-WS2812_Init(&hmatrix, &htim3, TIM_CHANNEL_1);
+WS2812_Init(&hmatrix, &htim2, TIM_CHANNEL_2);
 WS2812_SetBrightness(&hmatrix, 80);          // 0–255, default 255
 
 // Escritura en buffer (no envía todavía)
@@ -198,9 +200,9 @@ WS2812_Refresh(&hmatrix);   // llamar siempre desde una tarea FreeRTOS
 
 | Recurso | Cantidad |
 |---|---|
-| Timer 16-bit | 1 (TIM3) |
-| Canal DMA | 1 (DMA1_Ch6) |
-| Interrupciones NVIC | 2 (TIM3 global + DMA1_Ch6) |
+| Timer 16-bit | 1 (TIM2) |
+| Canal DMA | 1 (DMA1_Ch7) |
+| Interrupciones NVIC | 2 (TIM2 global + DMA1_Ch7) |
 | Semáforo FreeRTOS | 1 |
 | RAM — buffer DMA (`uint16_t`) | 1596 × 2 = **3192 bytes** |
 | RAM — buffer de píxeles | 8×8×3 = **192 bytes** |

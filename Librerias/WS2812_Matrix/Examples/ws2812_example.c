@@ -6,8 +6,10 @@
  * proyecto generado por STM32CubeIDE. NO compilar directamente.
  *
  * Pines usados en este ejemplo:
- *   DATA (DIN): PA6 → TIM3_CH1 (configurado en CubeMX)
- *   (TRIG del HC-SR04 queda en PA8 sin conflicto)
+ *   DATA (DIN): PA1 → TIM2_CH2 (configurado en CubeMX)
+ *
+ * ATENCIÓN: TIM2 es incompatible con el driver HC-SR04 (que también usa
+ *   TIM2 para Input Capture). No usar ambos drivers en el mismo proyecto.
  *
  * =========================================================================
  * SECCIÓN 1 — Includes y handle global
@@ -97,12 +99,12 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 
 /* =========================================================================
  * SECCIÓN 4 — Inicialización
- * (llamar en main(), después de MX_TIM3_Init() y antes de vTaskStartScheduler)
+ * (llamar en main(), después de MX_TIM2_Init() y antes de vTaskStartScheduler)
  * =========================================================================
  */
 static void Matrix_Init(void)
 {
-    WS2812_Status_t s = WS2812_Init(&hmatrix, &htim3, TIM_CHANNEL_1);
+    WS2812_Status_t s = WS2812_Init(&hmatrix, &htim2, TIM_CHANNEL_2);
 
     if (s != WS2812_OK) {
         /* Fallo de inicialización — bucle de error con LED del Nucleo */
@@ -365,9 +367,13 @@ void vMatrixTask(void *pvParameters)
  * =========================================================================
  * SECCIÓN 8 — Uso simultáneo con el driver HC-SR04
  *
- * Ambos drivers pueden correr en el mismo proyecto. La única restricción
- * es que el HC-SR04 usa TIM2 y el WS2812 usa TIM3, sin conflicto.
- * Si querés pintar la matriz según la distancia medida:
+ * INCOMPATIBLE: esta configuración usa TIM2_CH2 (PA1); el driver HC-SR04
+ * también usa TIM2 para Input Capture. No se pueden usar juntos.
+ * Para combinar ambos drivers, reasignar el WS2812 a TIM3_CH1 (PA6) o
+ * TIM4_CH1 (PB6).
+ *
+ * Si en el futuro se cambia a un timer distinto y se quiere pintar la
+ * matriz según la distancia medida:
  * =========================================================================
  *
  *   void vSonarMatrixTask(void *pvParameters) {
